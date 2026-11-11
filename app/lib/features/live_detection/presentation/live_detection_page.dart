@@ -155,7 +155,10 @@ class _LiveDetectionViewState extends State<LiveDetectionView> {
           LiveFrameArrived(
             () => FrameData.fromCameraImage(
               image,
-              sensorOrientation: camera.sensorOrientation,
+              // iOS: camera_avfoundation rotates the stream connection to
+              // the device orientation, so frames are already upright.
+              // Android (CameraX) delivers them in sensor orientation.
+              sensorOrientation: Platform.isIOS ? 0 : camera.sensorOrientation,
             ),
           ),
         );
