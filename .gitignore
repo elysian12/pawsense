@@ -1,0 +1,74 @@
+# ---- OS / editors ----
+.DS_Store
+*.swp
+.idea/
+.vscode/
+*.iml
+
+# ---- Secrets (never commit) ----
+.env
+.env.*
+!.env.example
+dart_defines.json
+**/dart_defines.json
+*.p8
+*.p12
+*.mobileprovision
+*.jks
+*.keystore
+key.properties
+**/android/key.properties
+*service-account*.json
+*service_account*.json
+play-store-credentials.json
+google-services.json
+GoogleService-Info.plist
+sentry.properties
+.sentryclirc
+
+# ---- Flutter / Dart (app/) ----
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+*.g.dart.bak
+app/ios/Pods/
+app/ios/.symlinks/
+app/ios/Flutter/Generated.xcconfig
+app/ios/Flutter/flutter_export_environment.sh
+app/ios/Flutter/ephemeral/
+app/ios/Runner/GeneratedPluginRegistrant.*
+app/android/.gradle/
+app/android/local.properties
+app/android/app/debug/
+app/android/app/profile/
+app/android/app/release/
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots/
+**/fastlane/test_output/
+*.dSYM.zip
+debug-info/
+
+# ---- Ruby / Fastlane (bundler) ----
+.bundle/
+vendor/bundle/
+
+# ---- Node (backend/) ----
+node_modules/
+dist/
+npm-debug.log*
+
+# ---- Python (ml/) ----
+__pycache__/
+*.pyc
+.venv/
+ml/.venv/
+ml/data/
+ml/checkpoints/
+ml/artifacts/
+.ipynb_checkpoints/

@@ -1,0 +1,55 @@
+name: pawsense
+description: "PawSense - on-device pet detection, breed and sound classification, and cloud clip insights."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.1
+
+# Versions are pinned exactly (no carets). Notes:
+# - sqlite3_flutter_libs is NOT listed: its latest is 0.6.0+eol, an empty package obsolete
+#   since package:sqlite3 3.x (used by drift 2.35) bundles SQLite via build hooks.
+# - connectivity_plus 7.3.2 conflicts with battery_plus 7.1.2 (dbus 0.8 vs 0.7) -> 7.3.1.
+# - video_thumbnail (spec's choice) is replaced by fc_native_video_thumbnail: video_thumbnail
+#   0.5.6 uses jcenter() and fails to build with the current Android Gradle Plugin.
+#   fc_native_video_thumbnail also extracts a JPEG at a given time position.
+# - build_runner 2.17.x needs analyzer 14, which conflicts with bloc_test/flutter_test -> 2.16.1.
+dependencies:
+  battery_plus: 7.1.2
+  bloc: 9.2.1
+  camera: 0.12.2
+  connectivity_plus: 7.3.1
+  dio: 5.11.1
+  drift: 2.35.4
+  equatable: 3.0.0
+  fc_native_video_thumbnail: 4.0.0
+  flutter:
+    sdk: flutter
+  flutter_bloc: 9.1.1
+  get_it: 9.3.0
+  go_router: 18.1.4
+  image: 4.12.0
+  path: 1.9.1
+  path_provider: 2.1.6
+  permission_handler: 13.0.2
+  record: 7.1.2
+  sentry_flutter: 10.3.0
+  tflite_flutter: 0.12.1
+  uuid: 4.6.0
+  web_socket_channel: 3.0.3
+
+dev_dependencies:
+  bloc_test: 10.0.0
+  build_runner: 2.16.1
+  drift_dev: 2.35.3
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  mocktail: 1.0.5
+  very_good_analysis: 11.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/models/
