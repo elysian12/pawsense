@@ -18,7 +18,27 @@ Record the device, OS version, build mode and date next to every number.
 | Battery drain, 10 min live detection, adaptive skipping **on** | TBD — measure on device | TBD — measure on device |
 | Time to first insight token, clip analysis (s) | TBD — measure on device | TBD — measure on device |
 | Cold start to first frame (ms) | TBD — measure on device | TBD — measure on device |
-| Release build size (MB) | TBD — measure on device | TBD — measure on device |
+| Release build size (MB) | 47.3 (arm64-v8a APK, 2026-11-12) | 60.4 installed / 35.3 zipped IPA (unsigned, 2026-11-12) |
+
+## Release build size (measured 2026-11-12, Apple M4 Mac, Flutter 3.47.1)
+
+Size does not depend on the phone, so it was measured from the build output. These are
+**pre-store** sizes. The store download size (Play Console → App size, App Store Connect → App File
+Sizes) is smaller after compression and app thinning; record it after the first upload.
+
+| Build | Command | Size |
+|---|---|---|
+| Android arm64-v8a APK (what a modern phone gets) | `flutter build apk --release --split-per-abi` | **47.3 MB** |
+| Android armeabi-v7a APK | same | 42.0 MB |
+| Android universal `--target-platform android-arm64` APK | `flutter build apk --release --analyze-size --target-platform android-arm64` | 62.3 MB, of which 14.9 MB is x86_64 + armeabi-v7a plugin libraries that `--target-platform` does not strip |
+| iOS `Runner.app`, installed | `flutter build ios --release --analyze-size --no-codesign` | **60.4 MB** |
+| iOS unsigned IPA (zipped `Payload/Runner.app`) | zip -9 of the above | 35.3 MB |
+
+Where the bytes go: the three ML models are 16.9 MB (breeds.tflite 8.2, efficientdet_lite0 4.6,
+yamnet 4.1) in both apps, plus 8.2 MB for the Core ML `BreedClassifier.mlmodelc` on iOS. The rest is the
+Flutter engine (11.7 MB Android / 10.2 MB iOS), compiled Dart (7.4 MB) and TFLite runtime (6.8 MB
+arm64, CPU + GPU delegate). Biggest lever if size matters: int8-quantize the breed model, or ship
+only one breed engine on iOS (see ADR-4).
 
 ## Measured offline (not phone numbers)
 
