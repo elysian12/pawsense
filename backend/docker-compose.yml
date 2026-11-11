@@ -1,0 +1,10 @@
+# Local dev: `docker compose up --build`. On the VM: `docker compose pull && docker compose up -d --no-build`
+# (CI pushes the image to GHCR; set IMAGE in the VM's .env to pin a tag).
+services:
+  api:
+    image: ${IMAGE:-ghcr.io/elysian12/pawsense-backend:latest}
+    build: .
+    env_file: .env
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    restart: unless-stopped
