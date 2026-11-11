@@ -2,10 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>NSCameraUsageDescription</key>
-	<string>PawSense uses the camera to detect your pet and identify its breed on-device, and to record short clips for analysis.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>PawSense listens for barks and meows on-device and records audio with your clips.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -32,6 +28,17 @@
 	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>PawSense uses the camera to detect your pet and identify its breed on-device, and to record short clips for analysis.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>PawSense connects to your PawSense server on this network to analyze recorded clips.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>PawSense listens for barks and meows on-device and records audio with your clips.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
