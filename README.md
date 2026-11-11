@@ -23,7 +23,7 @@ a held-out test photo on a monitor: "dog 71%" is the on-device detector, "americ
 breed classifier running on <b>Core ML</b>. The HUD shows camera fps, processed fps and per-model
 milliseconds live.</sub></p>
 
-![App screens on iPhone](docs/images/screens.png)
+![App screens on iPhone](docs/images/screens-iphone.png)
 
 ---
 
