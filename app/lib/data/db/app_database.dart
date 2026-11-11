@@ -34,7 +34,7 @@ class Clips extends Table {
 
   /// Stored as [ClipStatus.wireName] (`pending_upload`, ...).
   TextColumn get status => text().map(const ClipStatusConverter())();
-  TextColumn get framePaths => text().map(const StringListConverter())();
+  TextColumn get framePaths => text().map(const DocumentsPathsConverter())();
   TextColumn get jobId => text().nullable()();
   TextColumn get error => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
@@ -69,6 +69,7 @@ class AppDatabase extends _$AppDatabase {
   factory open() => AppDatabase(
     LazyDatabase(() async {
       final dir = await getApplicationDocumentsDirectory();
+      DocumentsPathsConverter.documentsDir = dir.path;
       return NativeDatabase.createInBackground(
         File(p.join(dir.path, 'pawsense.sqlite')),
       );
@@ -90,15 +91,44 @@ class JsonMapConverter extends TypeConverter<Map<String, Object?>, String> {
   String toSql(Map<String, Object?> value) => jsonEncode(value);
 }
 
-class StringListConverter extends TypeConverter<List<String>, String> {
+/// Keyframe paths, stored relative to the app documents directory.
+///
+/// iOS moves the app's data container (a new UUID in the path) when the app
+/// is updated or reinstalled, so absolute paths go stale and queued clips
+/// fail with PathNotFoundException. Rows written before this converter hold
+/// absolute paths; those are re-rooted after `/Documents/` on read.
+class DocumentsPathsConverter extends TypeConverter<List<String>, String> {
   const new();
 
-  @override
-  List<String> fromSql(String fromDb) =>
-      (jsonDecode(fromDb) as List).cast<String>();
+  /// Set by [AppDatabase.open] before the first query. Null for in-memory
+  /// test databases, where paths pass through unchanged.
+  static String? documentsDir;
+
+  static const _marker = '/Documents/';
 
   @override
-  String toSql(List<String> value) => jsonEncode(value);
+  List<String> fromSql(String fromDb) => [
+    for (final s in (jsonDecode(fromDb) as List).cast<String>()) _absolute(s),
+  ];
+
+  @override
+  String toSql(List<String> value) =>
+      jsonEncode([for (final s in value) _relative(s)]);
+
+  static String _absolute(String stored) {
+    final docs = documentsDir;
+    if (docs == null) return stored;
+    if (p.isRelative(stored)) return p.join(docs, stored);
+    final i = stored.lastIndexOf(_marker); // legacy absolute iOS path
+    return i < 0 ? stored : p.join(docs, stored.substring(i + _marker.length));
+  }
+
+  static String _relative(String path) {
+    final docs = documentsDir;
+    return docs != null && p.isWithin(docs, path)
+        ? p.relative(path, from: docs)
+        : path;
+  }
 }
 
 class ClipStatusConverter extends TypeConverter<ClipStatus, String> {

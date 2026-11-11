@@ -612,7 +612,7 @@ class $ClipsTable extends Clips with TableInfo<$ClipsTable, ClipRow> {
   static TypeConverter<ClipStatus, String> $converterstatus =
       const ClipStatusConverter();
   static TypeConverter<List<String>, String> $converterframePaths =
-      const StringListConverter();
+      const DocumentsPathsConverter();
   static JsonTypeConverter2<PetType, String, String> $converterpetType =
       const EnumNameConverter<PetType>(PetType.values);
 }
