@@ -20,6 +20,22 @@ Record the device, OS version, build mode and date next to every number.
 | Cold start to first frame (ms) | TBD — measure on device | TBD — measure on device |
 | Release build size (MB) | 47.3 (arm64-v8a APK, 2026-11-12) | 60.4 installed / 35.3 zipped IPA (unsigned, 2026-11-12) |
 
+## Early observation: iPhone 17 HUD (2026-11-12, not the benchmark)
+
+iPhone 17, iOS 27.0.1, profile build, breed engine **Core ML**, adaptive skipping on, camera pointed at
+an Oxford-IIIT Pet test photo on a monitor. Values read off the HUD in three frames of a single
+16-second screen recording (screen recording adds CPU/GPU load). Use these as a sanity check only;
+the summary table needs the 20-sample procedure under [How to measure](#how-to-measure).
+
+| HUD field | Observed |
+|---|---|
+| camera fps | 23.9–24.2 |
+| processed fps | 10–13 |
+| `detect` (EfficientDet-Lite0, isolate round trip) | 16.5–25.1 ms |
+| `breed Core ML` (crop + JPEG + channel + Vision) | 37.0–37.9 ms |
+| `inference avg` / `p95` (last 50 frames) | 35.7–35.9 ms / 71.7 ms |
+| scheduler mode | full (pet in view) |
+
 ## Release build size (measured 2026-11-12, Apple M4 Mac, Flutter 3.47.1)
 
 Size does not depend on the phone, so it was measured from the build output. These are

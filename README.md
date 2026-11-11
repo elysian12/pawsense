@@ -14,15 +14,16 @@ entirely on the phone. It listens for barks and meows with an on-device sound mo
 health concerns, streaming the answer back word by word. Everything is saved to an offline-first
 feed, and clips wait in a queue until the network returns.
 
-![Detector and breed classifier on held-out test photos](docs/images/detections.jpg)
+<p align="center">
+  <img src="docs/images/demo.gif" width="300" alt="PawSense running on an iPhone 17: live detection with breed, then the Sound, Clips and Feed tabs">
+</p>
 
-<sub>The two shipped on-device models (`efficientdet_lite0.tflite` → `breeds.tflite`) run on photos
-from the Oxford-IIIT Pet **test split**, which the classifier never saw during training: "cat 72%" is
-the detector's confidence, "Bombay 100%" the breed classifier's. One example per breed, picked
-where the prediction was right; the honest per-breed accuracy is in the chart under
-[Results](#results).</sub>
+<p align="center"><sub>Screen recording from an iPhone 17 (profile build). The camera is pointed at
+a held-out test photo on a monitor: "dog 71%" is the on-device detector, "american_bulldog 97%" the
+breed classifier running on <b>Core ML</b>. The HUD shows camera fps, processed fps and per-model
+milliseconds live.</sub></p>
 
-![App screens](docs/images/screens.png)
+![App screens on iPhone](docs/images/screens.png)
 
 ---
 
@@ -159,6 +160,14 @@ sequenceDiagram
 
 Download sources and sha256 hashes for every model file: [`ml/README.md`](ml/README.md).
 
+![Detector and breed classifier on held-out test photos](docs/images/detections.jpg)
+
+<sub>The two shipped models (`efficientdet_lite0.tflite` → `breeds.tflite`) on photos from the
+Oxford-IIIT Pet **test split**, which the classifier never saw during training, run offline in
+Python with the app's preprocessing: "cat 72%" is the detector's confidence, "Bombay 100%" the breed
+classifier's. One example per breed, picked where the prediction was right; the honest per-breed
+accuracy is in the chart under [Results](#results).</sub>
+
 ## How the breed classifier was trained
 
 **Dataset:** [Oxford-IIIT Pet](https://www.robots.ox.ac.uk/~vgg/data/pets/), 37 breeds (12 cats,
@@ -253,8 +262,14 @@ estimated.
 | Cold start to first frame | TBD — measure on device | TBD — measure on device |
 
 The three models are 16.9 MB of each app; iOS also carries the 8.2 MB Core ML copy of the breed
-model. The HUD in the **Live** screenshot above shows the kind of numbers the app reports (that
-one is an Android emulator on a Mac CPU, so it is not a benchmark).
+model.
+
+**First look on an iPhone 17** (profile build, Core ML breed engine, read off the HUD in the
+recording above): camera 24 fps, 10–13 frames/s through the models, detection 16.5–25.1 ms, Core ML
+breed classification about 37 ms including the crop, JPEG encode and method channel, per-frame
+inference average about 36 ms and p95 71.7 ms. These come from a single 16-second screen recording,
+which itself costs CPU and GPU, so they stay out of the table until the full procedure in
+`docs/METRICS.md` is run.
 
 ## Engineering decisions
 
