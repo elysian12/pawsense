@@ -72,3 +72,8 @@ ml/data/
 ml/checkpoints/
 ml/artifacts/
 .ipynb_checkpoints/
+
+# Local test photos (Oxford-IIIT Pet test split, CC BY-SA 4.0); not part of the repo
+test_images/
+# Local test sounds (ESC-50 dataset, CC BY-NC 3.0); not part of the repo
+test_sounds/
