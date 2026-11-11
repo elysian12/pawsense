@@ -1,0 +1,101 @@
+name: release-ios
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+concurrency: release-ios
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: app
+
+jobs:
+  testflight:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    env:
+      LANG: en_US.UTF-8 # CocoaPods and fastlane fail on a non-UTF-8 locale.
+      LC_ALL: en_US.UTF-8
+      # sentry-cli reads these. Org/project are repo variables, not secrets.
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: 3.47.1
+          channel: stable
+          cache: true
+      - uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
+        with:
+          ruby-version: '4.0.9'
+          bundler-cache: true
+          working-directory: app
+
+      # Tag v1.2.3 -> build-name 1.2.3; manual runs use pubspec's version.
+      # build-number is the run number, so every upload is unique.
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            name="${GITHUB_REF_NAME#v}"
+          else
+            name="$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)"
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "Building $name ($GITHUB_RUN_NUMBER)"
+
+      - name: Write dart_defines.json
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: |
+          : "${API_BASE_URL:?secret API_BASE_URL is required}" "${API_TOKEN:?secret API_TOKEN is required}"
+          jq -n --arg API_BASE_URL "$API_BASE_URL" --arg API_TOKEN "$API_TOKEN" --arg SENTRY_DSN "$SENTRY_DSN" \
+            '{$API_BASE_URL, $API_TOKEN, $SENTRY_DSN}' > dart_defines.json
+
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+
+      # Writes ios/Flutter/Generated.xcconfig (target, version, dart-defines,
+      # obfuscation) and runs pod install. The Dart code is compiled by Xcode's
+      # Flutter build phase during fastlane's archive, using these settings.
+      - name: Configure Flutter release build for Xcode
+        run: >
+          flutter build ios --release --config-only
+          -t lib/main_production.dart
+          --build-name=${{ steps.version.outputs.name }}
+          --build-number=${{ github.run_number }}
+          --dart-define-from-file=dart_defines.json
+          --obfuscate
+          --split-debug-info="$PWD/build/debug-info"
+          --extra-gen-snapshot-options=--save-obfuscation-map="$PWD/build/app/obfuscation.map.json"
+
+      - name: Archive, sign and upload to TestFlight (fastlane beta)
+        working-directory: app/ios
+        env:
+          BUNDLE_GEMFILE: ${{ github.workspace }}/app/Gemfile
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_P8: ${{ secrets.APP_STORE_CONNECT_API_KEY_P8 }}
+          IOS_CERT_P12_BASE64: ${{ secrets.IOS_CERT_P12_BASE64 }}
+          IOS_CERT_PASSWORD: ${{ secrets.IOS_CERT_PASSWORD }}
+          IOS_PROFILE_BASE64: ${{ secrets.IOS_PROFILE_BASE64 }}
+        run: bundle exec fastlane beta
+
+      # build/ios/ipa holds Runner.app.dSYM.zip from the archive (native frames);
+      # build/debug-info holds the Dart symbols stripped by --split-debug-info.
+      - name: Upload dSYMs, Dart debug symbols + obfuscation map to Sentry
+        if: env.SENTRY_AUTH_TOKEN != ''
+        run: |
+          npx --yes @sentry/cli@3.8.2 debug-files upload build/debug-info build/ios/ipa
+          for symbols in build/debug-info/*.symbols; do
+            npx --yes @sentry/cli@3.8.2 dart-symbol-map upload build/app/obfuscation.map.json "$symbols"
+          done

@@ -1,0 +1,5 @@
+# Fastlane for both platforms. Run from app/ios or app/android with
+# BUNDLE_GEMFILE=../Gemfile bundle exec fastlane <lane>.
+source "https://rubygems.org"
+
+gem "fastlane", "2.241.2"

@@ -1,0 +1,115 @@
+name: release-android
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+concurrency: release-android
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: app
+
+jobs:
+  play-internal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      # sentry-cli reads these. Org/project are repo variables, not secrets.
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.23.0
+        with:
+          flutter-version: 3.47.1
+          channel: stable
+          cache: true
+      - uses: ruby/setup-ruby@b3aaceaef7e0ee231b499e7b5f49c03fc1d32199 # v1.338.0
+        with:
+          ruby-version: '4.0.9'
+          bundler-cache: true
+          working-directory: app
+
+      # Tag v1.2.3 -> build-name 1.2.3; manual runs use pubspec's version.
+      # build-number is the run number, so every upload is unique.
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            name="${GITHUB_REF_NAME#v}"
+          else
+            name="$(sed -n 's/^version: *\([^+]*\).*/\1/p' pubspec.yaml)"
+          fi
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "Building $name ($GITHUB_RUN_NUMBER)"
+
+      - name: Write dart_defines.json
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          API_TOKEN: ${{ secrets.API_TOKEN }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+        run: |
+          : "${API_BASE_URL:?secret API_BASE_URL is required}" "${API_TOKEN:?secret API_TOKEN is required}"
+          jq -n --arg API_BASE_URL "$API_BASE_URL" --arg API_TOKEN "$API_TOKEN" --arg SENTRY_DSN "$SENTRY_DSN" \
+            '{$API_BASE_URL, $API_TOKEN, $SENTRY_DSN}' > dart_defines.json
+
+      - name: Write upload keystore and key.properties
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          : "${ANDROID_KEYSTORE_BASE64:?secret ANDROID_KEYSTORE_BASE64 is required}"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/upload-keystore.jks
+          {
+            echo "storeFile=upload-keystore.jks"
+            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+          } > android/key.properties
+
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build obfuscated AAB
+        run: >
+          flutter build appbundle --release
+          -t lib/main_production.dart
+          --build-name=${{ steps.version.outputs.name }}
+          --build-number=${{ github.run_number }}
+          --dart-define-from-file=dart_defines.json
+          --obfuscate
+          --split-debug-info="$PWD/build/debug-info"
+          --extra-gen-snapshot-options=--save-obfuscation-map="$PWD/build/app/obfuscation.map.json"
+
+      # Kept for the very first Play release, which has to be uploaded by hand.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: app-release-${{ steps.version.outputs.name }}-${{ github.run_number }}.aab
+          path: app/build/app/outputs/bundle/release/app-release.aab
+
+      - name: Upload Dart debug symbols + obfuscation map to Sentry
+        if: env.SENTRY_AUTH_TOKEN != ''
+        run: |
+          npx --yes @sentry/cli@3.8.2 debug-files upload build/debug-info
+          for symbols in build/debug-info/*.symbols; do
+            npx --yes @sentry/cli@3.8.2 dart-symbol-map upload build/app/obfuscation.map.json "$symbols"
+          done
+
+      - name: Upload to Play internal track (fastlane internal)
+        working-directory: app/android
+        env:
+          BUNDLE_GEMFILE: ${{ github.workspace }}/app/Gemfile
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: bundle exec fastlane internal
